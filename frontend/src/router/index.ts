@@ -18,7 +18,7 @@ const router = createRouter({
     {
       path: '/auth',
       name: 'auth',
-      component: () => import('../views/AuthView.vue'),
+      redirect: '/welcome',
     },
     {
       path: '/blog',

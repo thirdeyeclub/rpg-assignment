@@ -15,6 +15,11 @@ export class BlogResolver {
     return this.blogService.getBlogs();
   }
 
+  @Query(() => BlogModel, { nullable: true })
+  async blog(@Args('id') id: string): Promise<BlogModel | null> {
+    return this.blogService.getBlogById(id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Mutation(() => BlogModel)
   async createBlog(

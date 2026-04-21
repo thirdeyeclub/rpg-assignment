@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { firstValueFrom, take } from 'rxjs';
+import { firstValueFrom, take, toArray } from 'rxjs';
 import { AuthService } from './auth/auth.service';
 import { NotificationsService } from './notifications/notifications.service';
 import { UserService } from './user/user.service';
@@ -75,12 +75,8 @@ describe('NotificationsService', () => {
   it('streams published blog events for SSE', async () => {
     const notificationsService = new NotificationsService();
     const event = {
-      id: 'blog-1',
-      subject: 's',
-      content: 'c',
-      authorId: 'user-1',
-      createdAt: 123,
-    };
+      blogId: '123e4567-e89b-12d3-a456-426614174000',
+    } as const;
     const nextEvent = firstValueFrom(notificationsService.streamBlogPublishedEvents().pipe(take(1)));
     notificationsService.emitBlogPublished(event);
 
@@ -88,5 +84,34 @@ describe('NotificationsService', () => {
       type: 'blog-published',
       data: event,
     });
+  });
+
+  it('streams queued blog events in emission order', async () => {
+    const notificationsService = new NotificationsService();
+    const events = [
+      { blogId: '00000000-0000-4000-8000-000000000001' },
+      { blogId: '00000000-0000-4000-8000-000000000002' },
+      { blogId: '00000000-0000-4000-8000-000000000003' },
+      { blogId: '00000000-0000-4000-8000-000000000004' },
+      { blogId: '00000000-0000-4000-8000-000000000005' },
+      { blogId: '00000000-0000-4000-8000-000000000006' },
+      { blogId: '00000000-0000-4000-8000-000000000007' },
+      { blogId: '00000000-0000-4000-8000-000000000008' },
+      { blogId: '00000000-0000-4000-8000-000000000009' },
+      { blogId: '00000000-0000-4000-8000-000000000010' },
+    ] as const;
+
+    const streamedEventsPromise = firstValueFrom(
+      notificationsService.streamBlogPublishedEvents().pipe(take(events.length), toArray()),
+    );
+
+    events.forEach((event) => notificationsService.emitBlogPublished(event));
+
+    await expect(streamedEventsPromise).resolves.toEqual(
+      events.map((event) => ({
+        type: 'blog-published',
+        data: event,
+      })),
+    );
   });
 });
