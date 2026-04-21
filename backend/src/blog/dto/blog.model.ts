@@ -14,6 +14,9 @@ export class BlogModel {
   @Field()
   authorId: string;
 
+  @Field(() => String)
+  authorEmail?: string;
+
   @Field(() => Int)
   createdAt: number;
 }

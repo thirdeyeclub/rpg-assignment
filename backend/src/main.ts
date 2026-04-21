@@ -1,3 +1,4 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -7,7 +8,7 @@ async function bootstrap() {
     origin: true,
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3200);
+  await app.listen(3200);
   console.log(`Graphql Endpoint: http://localhost:${process.env.PORT ?? 3200}/graphql`);
 }
 bootstrap();

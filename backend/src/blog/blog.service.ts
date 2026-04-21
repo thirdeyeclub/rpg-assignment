@@ -13,19 +13,28 @@ export class BlogService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async createBlog(subject: string, content: string, authorId: string): Promise<BlogModel> {
+  async createBlog(
+    subject: string,
+    content: string,
+    authorId: string,
+    authorEmail: string,
+  ): Promise<BlogModel> {
     const createdAt = Math.floor(Date.now() / 1000);
     const id: UUID = randomUUID();
 
     await this.db.insert(blogTable).values({ id, subject, content, authorId, createdAt });
 
     const blog: BlogModel = { id, subject, content, authorId, createdAt };
-    this.notificationsService.emitBlogPublished({ blogId: id, authorId });
+    this.notificationsService.emitBlogPublished({ blogId: id, authorId, authorEmail });
     return blog;
   }
 
-  async getBlogs(): Promise<BlogModel[]> {
-    const rows = await this.db.select().from(blogTable).orderBy(desc(blogTable.createdAt));
+  async getBlogs(authorId: string): Promise<BlogModel[]> {
+    const rows = await this.db
+      .select()
+      .from(blogTable)
+      .where(eq(blogTable.authorId, authorId))
+      .orderBy(desc(blogTable.createdAt));
     return rows.map(({ id, subject, content, authorId, createdAt }) => ({
       id, subject, content, authorId, createdAt,
     }));

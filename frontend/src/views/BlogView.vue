@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, watchEffect } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { gql } from '@apollo/client/core'
 import { useMutation, useQuery } from '@vue/apollo-composable'
+import { ACCESS_TOKEN_KEY } from '@/apollo/client'
 import { useToast } from '@/composables/useToast'
 
 type Blog = {
@@ -54,16 +55,51 @@ const CREATE_BLOG_MUTATION = gql`
 
 const subject = ref('')
 const content = ref('')
+const router = useRouter()
 const { showToast } = useToast()
 
-const { result, loading, error, refetch } = useQuery<BlogsQueryResult>(BLOGS_QUERY)
+const { result, loading, error, refetch } = useQuery<BlogsQueryResult>(BLOGS_QUERY, undefined, {
+  fetchPolicy: 'network-only',
+})
 const { mutate: createBlogMutate, loading: createLoading } = useMutation<
   CreateBlogMutationResult,
   CreateBlogMutationVariables
 >(CREATE_BLOG_MUTATION)
 
-const blogs = computed(() => result.value?.blogs ?? [])
+const parseTokenUserId = (token: string): string | null => {
+  try {
+    const payloadPart = token.split('.')[1]
+    if (!payloadPart) {
+      return null
+    }
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(padded)) as { sub?: string }
+    return payload.sub ?? null
+  } catch {
+    return null
+  }
+}
+
+const blogs = computed(() => {
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+  const currentUserId = token ? parseTokenUserId(token) : null
+  if (!currentUserId) {
+    return []
+  }
+  const items = result.value?.blogs ?? []
+  return items.filter((blog) => blog.authorId === currentUserId)
+})
 const isSubmitting = computed(() => createLoading.value)
+
+watchEffect(() => {
+  const message = error.value?.message?.toLowerCase() ?? ''
+  if (!message.includes('unauthorized')) {
+    return
+  }
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  void router.replace('/welcome')
+})
 
 const parseErrorMessage = (errorValue: unknown) => {
   if (typeof errorValue === 'object' && errorValue && 'message' in errorValue) {

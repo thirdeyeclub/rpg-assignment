@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { gql } from '@apollo/client/core'
 import { useMutation } from '@vue/apollo-composable'
-import { ACCESS_TOKEN_KEY } from '@/apollo/client'
+import { ACCESS_TOKEN_KEY, apolloClient } from '@/apollo/client'
 import { useNotifications } from '@/composables/useNotifications'
 import { useToast } from '@/composables/useToast'
 
@@ -95,6 +95,7 @@ const handleSubmit = async () => {
         throw new Error('Login did not return an access token.')
       }
       localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+      await apolloClient.clearStore()
       connect()
       showToast('Login successful.', 'success')
       await router.push('/blog')
@@ -107,6 +108,19 @@ const handleSubmit = async () => {
         password: password.value,
       },
     })
+    const loginResult = await loginMutate({
+      input: {
+        email: email.value,
+        password: password.value,
+      },
+    })
+    const accessToken = loginResult?.data?.login.accessToken
+    if (!accessToken) {
+      throw new Error('Login did not return an access token.')
+    }
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    await apolloClient.clearStore()
+    connect()
     showToast('Registration successful.', 'success')
     await router.push('/blog')
   } catch (error) {

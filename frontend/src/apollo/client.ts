@@ -1,5 +1,6 @@
-import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client/core'
+import { ApolloClient, from, HttpLink, InMemoryCache } from '@apollo/client/core'
 import { setContext } from '@apollo/client/link/context'
+import { onError } from '@apollo/client/link/error'
 
 export const ACCESS_TOKEN_KEY = 'accessToken'
 
@@ -18,7 +19,15 @@ const authLink = setContext((_, { headers }) => {
   }
 })
 
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  void import('@/lib/authSession').then(({ isAuthFailureGraphQL, forceLogout }) => {
+    if (isAuthFailureGraphQL(graphQLErrors, networkError)) {
+      void forceLogout()
+    }
+  })
+})
+
 export const apolloClient = new ApolloClient({
-  link: authLink.concat(httpLink),
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
 })

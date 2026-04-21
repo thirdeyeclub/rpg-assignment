@@ -31,6 +31,18 @@
 $ yarn install
 ```
 
+## Environment
+
+Configuration lives in `.env` at the root of this package (the same directory as `package.json`). Run installs and `nest`/`yarn` scripts from this directory so that file is loaded. Copy the sample file and set the secret:
+
+```bash
+cp .sample.env .env
+```
+
+| Variable | Description |
+| --- | --- |
+| `JWT_SECRET` | Required. Secret key used to sign and verify JWTs. Use a long, random value. |
+
 ## Compile and run the project
 
 ```bash

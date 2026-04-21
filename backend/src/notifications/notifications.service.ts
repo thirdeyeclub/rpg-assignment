@@ -5,6 +5,7 @@ import { Observable, Subject, filter, map } from 'rxjs';
 export interface BlogPublishedEvent {
   blogId: UUID;
   authorId: string;
+  authorEmail: string;
 }
 
 @Injectable()
@@ -20,7 +21,11 @@ export class NotificationsService {
       filter((event) => event.authorId !== userId),
       map((event) => ({
         type: 'blog-published',
-        data: { blogId: event.blogId, authorId: event.authorId },
+        data: JSON.stringify({
+          blogId: event.blogId,
+          authorId: event.authorId,
+          authorEmail: event.authorEmail,
+        }),
       })),
     );
   }

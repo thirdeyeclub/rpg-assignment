@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeMount, watch, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { gql } from '@apollo/client/core'
 import { useQuery } from '@vue/apollo-composable'
+import { ACCESS_TOKEN_KEY } from '@/apollo/client'
+import { forceLogout, isAuthApolloError } from '@/lib/authSession'
 
 type Blog = {
   id: string
   subject: string
   content: string
   authorId: string
+  authorEmail: string
   createdAt: number
 }
 
@@ -27,6 +30,7 @@ const BLOG_QUERY = gql`
       subject
       content
       authorId
+      authorEmail
       createdAt
     }
   }
@@ -36,8 +40,41 @@ const route = useRoute()
 const blogId = computed(() => String(route.params.id ?? ''))
 const variables = computed<BlogQueryVariables>(() => ({ id: blogId.value }))
 
-const { result, loading, error } = useQuery<BlogQueryResult, BlogQueryVariables>(BLOG_QUERY, variables)
+const queryEnabled = computed(() => {
+  void route.fullPath
+  return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY)) && blogId.value.length > 0
+})
+
+const { result, loading, error } = useQuery<BlogQueryResult, BlogQueryVariables>(
+  BLOG_QUERY,
+  variables,
+  () => ({
+    enabled: queryEnabled.value,
+  }),
+)
+
 const blog = computed(() => result.value?.blog ?? null)
+
+onBeforeMount(() => {
+  if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+    void forceLogout()
+  }
+})
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+      void forceLogout()
+    }
+  },
+)
+
+watchEffect(() => {
+  if (isAuthApolloError(error.value)) {
+    void forceLogout()
+  }
+})
 </script>
 
 <template>
@@ -45,10 +82,9 @@ const blog = computed(() => result.value?.blog ?? null)
     <p v-if="loading">Loading blog...</p>
     <p v-else-if="error">Failed to load blog.</p>
     <section v-else-if="blog" class="blog-card">
+      <p class="meta">{{ new Date(blog.createdAt * 1000).toLocaleString() }}</p>
       <h1>{{ blog.subject }}</h1>
-      <p class="meta">Blog ID: {{ blog.id }}</p>
-      <p class="meta">Author ID: {{ blog.authorId }}</p>
-      <p class="meta">Created At: {{ blog.createdAt }}</p>
+      <p class="meta">Written by: {{ blog.authorEmail }}</p>
       <p class="content">{{ blog.content }}</p>
     </section>
     <p v-else>Blog not found.</p>

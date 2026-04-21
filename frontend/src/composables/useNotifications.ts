@@ -4,11 +4,13 @@ import { ACCESS_TOKEN_KEY } from '@/apollo/client'
 type BlogPublishedPayload = {
   blogId: string
   authorId: string
+  authorEmail: string
 }
 
 type NotificationItem = {
   id: number
   blogId: string
+  authorEmail: string
   createdAt: number
 }
 
@@ -18,32 +20,35 @@ let source: EventSource | null = null
 let nextNotificationId = 1
 let activeToken: string | null = null
 
+const closeStreamOnly = () => {
+  source?.close()
+  source = null
+}
+
 const toNotificationsEndpoint = (token: string) => {
   const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL || '/graphql'
   const baseUrl = graphqlUrl.endsWith('/graphql') ? graphqlUrl.slice(0, -'/graphql'.length) : graphqlUrl
   return `${baseUrl}/notifications?access_token=${encodeURIComponent(token)}`
 }
 
-const appendNotification = (blogId: string) => {
+const appendNotification = (blogId: string, authorEmail: string) => {
   const id = nextNotificationId++
   notifications.value = [
     {
       id,
       blogId,
+      authorEmail,
       createdAt: Date.now(),
     },
     ...notifications.value,
-  ].slice(0, 20)
+  ].slice(0, 50)
   unreadCount.value += 1
-  window.setTimeout(() => {
-    notifications.value = notifications.value.filter((notification) => notification.id !== id)
-  }, 5000)
 }
 
 const parsePayload = (rawData: string): BlogPublishedPayload | null => {
   try {
     const parsed = JSON.parse(rawData) as BlogPublishedPayload
-    if (!parsed.blogId || !parsed.authorId) {
+    if (!parsed.blogId || !parsed.authorId || !parsed.authorEmail) {
       return null
     }
     return parsed
@@ -68,8 +73,7 @@ const parseTokenUserId = (token: string): string | null => {
 }
 
 const disconnect = () => {
-  source?.close()
-  source = null
+  closeStreamOnly()
   activeToken = null
   notifications.value = []
   unreadCount.value = 0
@@ -77,6 +81,17 @@ const disconnect = () => {
 
 const markAllRead = () => {
   unreadCount.value = 0
+}
+
+const dismissNotification = (id: number) => {
+  const exists = notifications.value.some((n) => n.id === id)
+  if (!exists) {
+    return
+  }
+  notifications.value = notifications.value.filter((n) => n.id !== id)
+  if (unreadCount.value > 0) {
+    unreadCount.value -= 1
+  }
 }
 
 const connect = () => {
@@ -90,10 +105,19 @@ const connect = () => {
     return
   }
 
-  disconnect()
+  if (activeToken && activeToken !== token) {
+    notifications.value = []
+    unreadCount.value = 0
+  }
+
+  closeStreamOnly()
   activeToken = token
   const currentUserId = parseTokenUserId(token)
   source = new EventSource(toNotificationsEndpoint(token))
+
+  source.onerror = () => {
+    closeStreamOnly()
+  }
 
   const handleIncomingEvent = (event: MessageEvent<string>) => {
     const payload = parsePayload(event.data)
@@ -103,7 +127,7 @@ const connect = () => {
     if (currentUserId && payload.authorId === currentUserId) {
       return
     }
-    appendNotification(payload.blogId)
+    appendNotification(payload.blogId, payload.authorEmail)
   }
 
   source.addEventListener('blog-published', (event) => {
@@ -117,4 +141,5 @@ export const useNotifications = () => ({
   connect,
   disconnect,
   markAllRead,
+  dismissNotification,
 })
