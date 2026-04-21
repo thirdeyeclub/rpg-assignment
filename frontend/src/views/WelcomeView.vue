@@ -132,7 +132,7 @@ const handleSubmit = async () => {
 <template>
   <main class="auth-page">
     <section class="auth-card">
-      <h1>Welcome, Login to being blogging</h1>
+      <h1>Login to being blogging</h1>
       <div class="mode-toggle">
         <button
           type="button"
