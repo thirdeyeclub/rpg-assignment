@@ -1,85 +1,58 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import AppToast from './components/AppToast.vue'
+import { useNotifications } from './composables/useNotifications'
+
+const { notifications, connect } = useNotifications()
+
+onMounted(() => {
+  connect()
+})
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <main class="app-shell">
+    <section v-if="notifications.length" class="notifications">
+      <h2>Notifications</h2>
+      <ul>
+        <li v-for="notification in notifications" :key="notification.id">
+          <RouterLink :to="`/blogs/${notification.blogId}`">New blog: {{ notification.blogId }}</RouterLink>
+        </li>
+      </ul>
+    </section>
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+    <RouterView />
+  </main>
+  <AppToast />
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.app-shell {
+  padding: 1.5rem;
 }
 
 nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
+  text-decoration: none;
 }
 
-nav a:first-of-type {
-  border: 0;
+.notifications {
+  margin-bottom: 1rem;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+.notifications h2 {
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+.notifications ul {
+  margin: 0;
+  padding-left: 1.2rem;
 }
 </style>

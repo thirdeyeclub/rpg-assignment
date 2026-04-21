@@ -10,6 +10,18 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  server: {
+    proxy: {
+      '/graphql': {
+        target: 'http://localhost:3200',
+        changeOrigin: true,
+      },
+      '/notifications': {
+        target: 'http://localhost:3200',
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
